@@ -179,7 +179,7 @@ img#img_path-field{
 					<div class="form-group row">
 						<div class="col-md-10">
 							<label for="" class="control-label">Description</label>
-							<textarea name="description" id="description" class="form-control jqte" cols="30" rows="5" required><?php echo isset($description) ? html_entity_decode($description) : '' ?></textarea>
+							<textarea name="description" id="description" class="form-control jqte" cols="30" rows="5" required><?php echo isset($description) ? htmlspecialchars($description, ENT_QUOTES, 'UTF-8') : '' ?></textarea>
 						</div>
 					</div>
 
