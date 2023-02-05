@@ -17,13 +17,36 @@ Class Action {
 
 	function login(){
 		
-			extract($_POST);		
-			$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".md5($password)."' ");
-			if($qry->num_rows > 0){
-				foreach ($qry->fetch_array() as $key => $value) {
-					if($key != 'passwors' && !is_numeric($key))
-						$_SESSION['login_'.$key] = $value;
+			extract($_POST);	
+			$qry = $this->db->prepare("SELECT * FROM users where username = ?");
+			$qry->bind_param('s', $username);
+			$qry->execute();
+
+			$result = $qry->get_result();
+
+			if($result->num_rows > 0){
+				$userData = $result->fetch_assoc();
+				$user_password = $userData['password'];
+				$user_username = $userData['username'];
+				$type = $userData['type'];
+				$name = $userData['name'];
+				$user_id = $userData['id'];
+
+				if (!$this->validateAccessAttemp($user_id)) {
+					return 4;
 				}
+
+				if(!password_verify($password, $user_password)) {
+					$date = date('Y-m-d H:i:s');
+					$this->db->query("INSERT INTO access_attemp(user_id, date, status) values($user_id, '$date', 0)");
+					return 3;
+				}
+
+				$_SESSION['login_username'] = $user_username;
+				$_SESSION['login_name'] = $name;
+				$_SESSION['login_type'] = $type;
+				$_SESSION['login_id'] = $user_id;
+				
 				if($_SESSION['login_type'] != 1){
 					foreach ($_SESSION as $key => $value) {
 						unset($_SESSION[$key]);
@@ -36,12 +59,30 @@ Class Action {
 				return 3;
 			}
 	}
+
+	function validateAccessAttemp($userId) {
+		$to_date = date('Y-m-d H:i:s');
+		$from_date = date('Y-m-d H:i:s', strtotime('-60 minutes'));
+
+		$qry = $this->db->prepare("select count(*) total from access_attemp where user_id = ? and status = 0 and date between ? and ? ");
+		$qry->bind_param('iss', $userId, $from_date, $to_date);
+		$qry->execute();
+		$result = $qry->get_result();
+		if($result->num_rows > 0){
+			$data = $result->fetch_assoc();
+			if ($data['total'] > 10) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	function login2(){
 		
 			extract($_POST);
 			if(isset($email))
 				$username = $email;
-		$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".md5($password)."' ");
+		$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".password_hash($password, PASSWORD_BCRYPT)."' ");
 		if($qry->num_rows > 0){
 			foreach ($qry->fetch_array() as $key => $value) {
 				if($key != 'passwors' && !is_numeric($key))
@@ -84,15 +125,19 @@ Class Action {
 	}
 
 	function save_user(){
+
+		$password_regex = "/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/";
 		extract($_POST);
 		$data = " name = '$name' ";
 		$data .= ", username = '$username' ";
-		if(!empty($password))
-		$data .= ", password = '".md5($password)."' ";
+		if(!empty($password)) {
+			if(preg_match($password_regex, $password) == 0) {
+				return 33;
+			}
+			$data .= ", password = '".password_hash($password, PASSWORD_BCRYPT)."' ";
+		}
 		$data .= ", type = '$type' ";
-		if($type == 1)
-			$establishment_id = 0;
-		$data .= ", establishment_id = '$establishment_id' ";
+		
 		$chk = $this->db->query("Select * from users where username = '$username' and id !='$id' ")->num_rows;
 		if($chk > 0){
 			return 2;
@@ -117,7 +162,7 @@ Class Action {
 		extract($_POST);
 		$data = " name = '".$firstname.' '.$lastname."' ";
 		$data .= ", username = '$email' ";
-		$data .= ", password = '".md5($password)."' ";
+		$data .= ", password = '".password_hash($password, PASSWORD_BCRYPT)."' ";
 		$chk = $this->db->query("SELECT * FROM users where username = '$email' ")->num_rows;
 		if($chk > 0){
 			return 2;
@@ -156,7 +201,7 @@ Class Action {
 		$data = " name = '".$firstname.' '.$lastname."' ";
 		$data .= ", username = '$email' ";
 		if(!empty($password))
-		$data .= ", password = '".md5($password)."' ";
+		$data .= ", password = '".password_hash($password, PASSWORD_BCRYPT)."' ";
 		$chk = $this->db->query("SELECT * FROM users where username = '$email' and id != '{$_SESSION['login_id']}' ")->num_rows;
 		if($chk > 0){
 			return 2;
@@ -263,7 +308,13 @@ Class Action {
 	}
 	function save_engine(){
 		extract($_POST);
-		$data = " name = '$name' ";
+
+		if (!$csrf_token || $csrf_token !== $_SESSION['csrf_token']) {
+			// return 405 http status code
+			header($_SERVER['SERVER_PROTOCOL'] . ' 405 Method Not Allowed');
+			exit;
+		} else {
+			$data = " name = '$name' ";
 			if(empty($id)){
 				$save = $this->db->query("INSERT INTO engine_types set $data");
 			}else{
@@ -271,6 +322,7 @@ Class Action {
 			}
 		if($save)
 			return 1;
+		}
 	}
 	function delete_engine(){
 		extract($_POST);
@@ -284,10 +336,11 @@ Class Action {
 		$data = "";
 		foreach($_POST as $k => $v){
 			if(!in_array($k, array('id','img','description')) && !is_numeric($k)){
+				$value = htmlspecialchars($v);
 				if(empty($data)){
-					$data .= " $k='$v' ";
+					$data .= " $k='$value' ";
 				}else{
-					$data .= ", $k='$v' ";
+					$data .= ", $k='$value' ";
 				}
 			}
 		}

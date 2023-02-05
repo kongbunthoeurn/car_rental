@@ -60,6 +60,9 @@ foreach($user->fetch_array() as $k =>$v){
 					setTimeout(function(){
 						location.reload()
 					},1500)
+				} else if (resp == 33) {
+					$('#msg').html('<div class="alert alert-danger">Password Not Strong. Has minimum 8 characters in length. Adjust it by modifying. At least one uppercase and lowercase English letter. At least one digit. At least one special character</div>')
+					end_load()
 				}else{
 					$('#msg').html('<div class="alert alert-danger">Username already exist</div>')
 					end_load()

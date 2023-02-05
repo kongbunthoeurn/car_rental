@@ -1,5 +1,14 @@
 <?php include('db_connect.php');?>
 
+<?php 
+	$request_method = strtoupper($_SERVER['REQUEST_METHOD']);
+
+	if ($request_method === 'GET') {
+		// generate a token
+		$_SESSION['csrf_token'] = bin2hex(random_bytes(35));
+	}
+?>
+
 <div class="container-fluid">
 	
 	<div class="col-lg-12">
@@ -7,6 +16,7 @@
 			<!-- FORM Panel -->
 			<div class="col-md-4">
 			<form action="" id="manage-engine">
+				<input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? '' ?>">
 				<div class="card">
 					<div class="card-header">
 						    Engine Type Form

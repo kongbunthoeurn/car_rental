@@ -71,9 +71,13 @@ if($action == "delete_transmission"){
 }
 
 if($action == "save_engine"){
-	$save = $crud->save_engine();
-	if($save)
-		echo $save;
+	if (isset($_SESSION['login_id'])) {
+		$save = $crud->save_engine();
+		if($save)
+			echo $save;
+	} else {
+		echo "No Authentication";
+	}
 }
 if($action == "delete_engine"){
 	$save = $crud->delete_engine();

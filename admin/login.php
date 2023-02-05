@@ -135,7 +135,10 @@ div#login-right::before {
 			success:function(resp){
 				if(resp == 1){
 					location.href ='index.php?page=home';
-				}else{
+				} else if (resp == 4) {
+					$('#login-form').prepend('<div class="alert alert-danger">Your user has been blocked for 1h</div>')
+					$('#login-form button[type="button"]').removeAttr('disabled').html('Login');
+				} else{
 					$('#login-form').prepend('<div class="alert alert-danger">Username or password is incorrect.</div>')
 					$('#login-form button[type="button"]').removeAttr('disabled').html('Login');
 				}
